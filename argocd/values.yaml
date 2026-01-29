@@ -1,0 +1,12 @@
+server:
+  # Configura o protocolo HTTPS para o Service (solicitado anteriormente)
+  service:
+    servicePortHttpsAppProtocol: HTTPS
+
+  # Argumento extra para permitir tráfego HTTP vindo do Gateway (SSL Termination)
+  extraArgs:
+    - --insecure
+
+  # Garante que o Argo CD entenda que está atrás de um proxy
+  config:
+    application.instanceLabelKey: argocd.argoproj.io/instance
