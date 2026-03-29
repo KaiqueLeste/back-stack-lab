@@ -19,9 +19,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://ghcr.io/nginx/charts
+        chart: oci://ghcr.io/nginx/charts/nginx-gateway-fabric
         targetRevision: ""
-        chart: nginx-gateway-fabric
         helm:
           releaseName: ngf
           values: |
