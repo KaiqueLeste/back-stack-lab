@@ -20,7 +20,7 @@ spec:
       project: back-stack
       source:
         chart: oci://ghcr.io/crossplane-contrib/crossview-chart/crossview
-        targetRevision: 3.5.3
+        targetRevision: 3.6.0
         helm:
           releaseName: crossview
           values: |

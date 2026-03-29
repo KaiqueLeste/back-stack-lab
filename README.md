@@ -200,7 +200,7 @@ kind delete cluster --name cluster-hub
 - **Documentação**: https://docs.crossplane.io/
 
 ### Crossview
-- **Versão**: 3.5.3
+- **Versão**: 3.6.0
 - **Namespace**: crossview
 - **Função**: Interface web para visualização de recursos Crossplane
 - **Documentação**: https://github.com/crossplane-contrib/crossview
