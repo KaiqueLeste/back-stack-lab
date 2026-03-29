@@ -29,8 +29,10 @@ spec:
               service:
                 type: NodePort
                 nodePorts:
-                  http: 31437
-                  https: 30478
+                  - name: http
+                    port: 31437
+                  - name: https
+                    port: 30478
       destination:
         server: https://kubernetes.default.svc
         namespace: nginx-gateway
