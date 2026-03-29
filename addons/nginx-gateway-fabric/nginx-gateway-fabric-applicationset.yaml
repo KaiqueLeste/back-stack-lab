@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: nginx-gateway-fabric
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - name: nginx-gateway-fabric
+  template:
+    metadata:
+      name: nginx-gateway-fabric
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: nginx-gateway-fabric
+        app.kubernetes.io/component: ingress-gateway
+    spec:
+      project: default
+      source:
+        repoURL: oci://ghcr.io/nginx/charts
+        targetRevision: ""
+        chart: nginx-gateway-fabric
+        helm:
+          releaseName: ngf
+          values: |
+            nginx:
+              service:
+                type: NodePort
+                nodePorts:
+                  http: 31437
+                  https: 30478
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nginx-gateway
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

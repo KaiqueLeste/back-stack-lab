@@ -1,4 +1,4 @@
-# Guia de Setup - B(A)C(K) Stack: Backstage, ArgoCD, Crossplane, Kyverno
+# Guia de Setup - B(ackstage)A(rgoCD)C(rossplane)K(yverno) Stack
 
 Este guia demonstra como configurar um cluster Kubernetes local usando Kind, com NGINX Gateway Fabric para roteamento e ArgoCD para GitOps, incluindo a instalação automática da stack completa: **Crossplane**, **Crossview**, **Kyverno** e **LocalStack**.
 
@@ -33,36 +33,25 @@ kind create cluster --config kind/control-plane.yaml
 
 ## 2. Instalando Gateway API CRDs
 
-```bash
-kubectl kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v2.3.0" | kubectl apply -f -
-```
+**✅ Automatizado via ArgoCD** - Os CRDs do Gateway API são aplicados automaticamente pelo manifesto `addons/nginx-gateway-fabric/gateway-api-crds.yaml` durante o bootstrap.
 
 **O que faz**: Instala os Custom Resource Definitions necessários para o Gateway API.
 
 ## 3. Instalando NGINX Gateway Fabric
 
-```bash
-helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
-  --create-namespace -n nginx-gateway \
-  --set nginx.service.type=NodePort \
-  --set-json 'nginx.service.nodePorts=[{"port":31437,"listenerPort":80}, {"port":30478,"listenerPort":8443}]'
-```
+**✅ Automatizado via ArgoCD** - O NGINX Gateway Fabric é instalado automaticamente pelo ApplicationSet `nginx-gateway-fabric` durante o bootstrap.
 
-**O que faz**: 
+**O que faz**:
 - Instala o NGINX Gateway Fabric no namespace `nginx-gateway`
 - Configura NodePort para expor serviços nas portas mapeadas no Kind
 - Mapeia porta 80→31437 e 8443→30478
 
 ## 4. Criando Gateway Compartilhado
 
-```bash
-kubectl apply -f kind/default-gateway.yaml
-```
+**✅ Automatizado via ArgoCD** - O Gateway compartilhado é configurado automaticamente pelo manifesto `addons/nginx-gateway-fabric/shared-gateway.yaml` durante o bootstrap.
 
 **O que faz**:
-- Cria namespace `gateway-infrastructure` 
-- Configura Gateway compartilhado para domínio `*.kleste.lab`
-- Permite acesso de namespaces com label `shared-gateway-access=true`
+- Cria namespace `gateway-infrastructure`
 
 ## 5. Instalando ArgoCD
 
@@ -168,8 +157,12 @@ kind delete cluster --name cluster-hub
 │   │   └── crossview-applicationset.yaml
 │   ├── kyverno/
 │   │   └── kyverno-applicationset.yaml
-│   └── localstack/
-│       └── localstack-applicationset.yaml
+│   ├── localstack/
+│   │   └── localstack-applicationset.yaml
+│   └── nginx-gateway-fabric/     # NGINX Gateway Fabric e Gateway API
+│       ├── gateway-api-crds.yaml
+│       ├── nginx-gateway-fabric-applicationset.yaml
+│       └── shared-gateway.yaml
 ├── argocd/
 │   ├── bootstrap.yaml           # Bootstrap Application + AppProject
 │   ├── github-secret.yaml.example # Template de secret do GitHub
@@ -182,6 +175,23 @@ kind delete cluster --name cluster-hub
 ```
 
 ## Componentes da Stack B(A)C(K)
+
+### NGINX Gateway Fabric
+- **Versão**: Latest (via OCI registry)
+- **Namespace**: nginx-gateway
+- **Função**: Gateway API implementation para roteamento HTTP/HTTPS
+- **Documentação**: https://docs.nginx.com/nginx-gateway-fabric/
+
+### Gateway API CRDs
+- **Versão**: v2.3.0
+- **Namespace**: gateway-api
+- **Função**: Custom Resource Definitions para Gateway API
+- **Fonte**: https://github.com/nginx/nginx-gateway-fabric
+
+### Shared Gateway
+- **Namespace**: gateway-infrastructure
+- **Função**: Gateway compartilhado para domínio *.kleste.lab
+- **Configuração**: Permite acesso via label `shared-gateway-access=true`
 
 ### Crossplane
 - **Versão**: 2.2.0
