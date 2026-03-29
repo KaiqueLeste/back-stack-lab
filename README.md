@@ -59,6 +59,14 @@ cp argocd/github-secret.yaml.example argocd/github-secret.yaml
 kubectl apply -f argocd/github-secret.yaml
 ```
 
+## 3.1 Configurar Secret do GHCR para Crossview
+
+```bash
+cp argocd/ghcr-secret.yaml.example argocd/ghcr-secret.yaml
+# Edite argocd/ghcr-secret.yaml, colocando seu username e GHCR token
+kubectl apply -f argocd/ghcr-secret.yaml
+```
+
 ## 4. Aplicar Bootstrap para instalar addons
 
 ```bash

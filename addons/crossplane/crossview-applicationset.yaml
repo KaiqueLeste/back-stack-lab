@@ -19,7 +19,7 @@ spec:
     spec:
       project: back-stack
       source:
-        repoURL: ghcr.io/crossplane-contrib/crossview-chart
+        repoURL: oci://ghcr.io/crossplane-contrib/crossview-chart
         chart: crossview
         targetRevision: 3.6.0
         helm:
