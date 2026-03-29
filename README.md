@@ -1,17 +1,17 @@
-# Guia de Setup - B(ackstage)A(rgoCD)C(rossplane)K(yverno) Stack
+# Guia de Setup - B(ackstage) A(rgoCD) C(rossplane) K(yverno) Stack
 
-Este guia demonstra como configurar um cluster Kubernetes local usando Kind, com NGINX Gateway Fabric para roteamento e ArgoCD para GitOps, incluindo a instalação automática da stack completa: **Crossplane**, **Crossview**, **Kyverno** e **LocalStack**.
+Este guia demonstra como configurar um cluster Kubernetes local com Kind e ArgoCD, e como instalar a stack completa via ApplicationSets:
+- Crossplane + Crossview
+- Kyverno
+- LocalStack
+- NGINX Gateway Fabric (Gateway API + shared gateway)
 
 ## Arquitetura
 
-- **Cluster Kind**: Kubernetes v1.35.0 com port mappings para acesso externo
-- **NGINX Gateway Fabric**: Implementação do Gateway API para roteamento HTTP/HTTPS
-- **ArgoCD**: Ferramenta de GitOps para deployment contínuo
-- **Crossplane**: Plataforma de infraestrutura como código
-- **Crossview**: Interface de visualização para recursos Crossplane
-- **Kyverno**: Gerenciamento de políticas nativo do Kubernetes
-- **LocalStack**: Emulação completa de serviços AWS localmente
-- **Domínio**: `*.kleste.lab` (configurar no `/etc/hosts` se necessário)
+- **Cluster Kind**: Kubernetes v1.35.0
+- **ArgoCD**: GitOps controller
+- **NGINX Gateway Fabric**: Ingress/gateway
+- **Stack**: Crossplane, Crossview, Kyverno, LocalStack
 
 ## Pré-requisitos
 
@@ -31,36 +31,16 @@ kind create cluster --config kind/control-plane.yaml
 - Kubernetes v1.35.0
 - Port mappings: 8080→31437 (HTTP), 8443→30478 (HTTPS), 30000→30000
 
-## 2. Instalando Gateway API CRDs
-
-**✅ Automatizado via ArgoCD** - Os CRDs do Gateway API são aplicados automaticamente pelo manifesto `addons/nginx-gateway-fabric/gateway-api-crds.yaml` durante o bootstrap.
-
-**O que faz**: Instala os Custom Resource Definitions necessários para o Gateway API.
-
-## 3. Instalando NGINX Gateway Fabric
-
-**✅ Automatizado via ArgoCD** - O NGINX Gateway Fabric é instalado automaticamente pelo ApplicationSet `nginx-gateway-fabric` durante o bootstrap.
-
-**O que faz**:
-- Instala o NGINX Gateway Fabric no namespace `nginx-gateway`
-- Configura NodePort para expor serviços nas portas mapeadas no Kind
-- Mapeia porta 80→31437 e 8443→30478
-
-## 4. Criando Gateway Compartilhado
-
-**✅ Automatizado via ArgoCD** - O Gateway compartilhado é configurado automaticamente pelo manifesto `addons/nginx-gateway-fabric/shared-gateway.yaml` durante o bootstrap.
-
-**O que faz**:
-- Cria namespace `gateway-infrastructure`
-
-## 5. Instalando ArgoCD
+## 2. Instalando ArgoCD
 
 ```bash
-# Criar namespace e configurar acesso ao gateway
+# Criar namespace argocd
 kubectl create ns argocd
+
+# Label para permitir acesso, caso use o gateway compartilhado (opcional)
 kubectl label namespace argocd shared-gateway-access="true" --overwrite
 
-# Atualizar repositório Helm (necessário se você já tinha o repo configurado)
+# Atualizar repositório Helm
 helm repo update
 
 # Instalar ArgoCD com configurações customizadas
@@ -68,14 +48,41 @@ helm install argocd argo/argo-cd --version 9.3.7 -n argocd -f argocd/values.yaml
 ```
 
 **O que faz**:
-- Cria namespace `argocd` com acesso ao gateway compartilhado
-- Atualiza o índice do repositório Helm para garantir acesso às versões mais recentes
-- Instala ArgoCD v9.3.7 com configurações para funcionar atrás de proxy
-- Habilita modo `--insecure` para SSL termination no gateway
+- Cria namespace `argocd`
+- Instala ArgoCD no cluster
 
-> **⚠️ Nota**: Se você receber o erro `chart "argo-cd" matching 9.3.7 not found`, execute `helm repo update` antes da instalação para atualizar o índice do repositório.
+## 3. Configurar Secret do GitHub para ArgoCD
 
-## 6. Configurando Rotas do ArgoCD
+```bash
+cp argocd/github-secret.yaml.example argocd/github-secret.yaml
+# Edite argocd/github-secret.yaml, colocando seu token em password
+kubectl apply -f argocd/github-secret.yaml
+```
+
+## 4. Aplicar Bootstrap para instalar addons
+
+```bash
+kubectl apply -f argocd/bootstrap.yaml
+```
+
+**O que faz**:
+- Cria AppProject `back-stack`
+- Cria Application `addons` que aplica os ApplicationSets das pastas `addons/*`
+- Instala Crossplane, Crossview, Kyverno, LocalStack e NGINX Gateway Fabric
+
+### 4.1 O que está automatizado pelo bootstrap (addons)
+
+O Application `addons` aplica automaticamente:
+
+- `addons/nginx-gateway-fabric/gateway-api-crds.yaml`
+- `addons/nginx-gateway-fabric/nginx-gateway-fabric-applicationset.yaml`
+- `addons/nginx-gateway-fabric/shared-gateway.yaml`
+- `addons/crossplane/crossplane-applicationset.yaml`
+- `addons/crossplane/crossview-applicationset.yaml`
+- `addons/kyverno/kyverno-applicationset.yaml`
+- `addons/localstack/localstack-applicationset.yaml`
+
+## 5. Configurando Rotas do ArgoCD (opcional se estiver usando port-forward)
 
 ```bash
 kubectl apply -f argocd/argocd-routes.yaml
@@ -85,41 +92,7 @@ kubectl apply -f argocd/argocd-routes.yaml
 - Cria HTTPRoute para expor ArgoCD em `argocd.kleste.lab`
 - Roteia tráfego do gateway para o serviço ArgoCD na porta 443
 
-## 7. Bootstrap da Stack B(A)C(K)
-
-### 7.1 Configurando Credenciais do GitHub
-
-```bash
-# Copie o template de secret
-cp argocd/github-secret.yaml.example argocd/github-secret.yaml
-
-# Edite o arquivo e substitua <GITHUB_TOKEN> pelo seu token do GitHub
-# Token pode ser gerado em: https://github.com/settings/tokens
-nano argocd/github-secret.yaml
-
-# Aplique a secret
-kubectl apply -f argocd/github-secret.yaml
-```
-
-**O que faz**:
-- Cria credenciais para o ArgoCD acessar este repositório Git
-- Permite sincronização automática dos addons
-
-### 7.2 Aplicando Bootstrap
-
-```bash
-kubectl apply -f argocd/bootstrap.yaml
-```
-
-**O que faz**:
-- Cria o AppProject `back-stack` com permissões para todos os repositórios necessários
-- Cria o Application `addons` que instala automaticamente todos os componentes:
-  - **Crossplane** v2.2.0 (plataforma de infraestrutura)
-  - **Crossview** v3.5.3 (interface de visualização)
-  - **Kyverno** v1.17.1 (gerenciamento de políticas)
-  - **LocalStack** v0.7.0 (emulação AWS)
-
-## 8. Acessando os Serviços
+## 6. Acessando os Serviços
 
 ### Configuração de DNS Local
 Adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` (Windows):
@@ -141,7 +114,7 @@ Adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` 
 - **Porta**: 4566 (ClusterIP)
 - **Acesso**: Via port-forward: `kubectl port-forward -n localstack svc/localstack 4566:4566`
 
-## 9. Limpeza do Ambiente
+## 7. Limpeza do Ambiente
 
 ```bash
 kind delete cluster --name cluster-hub
@@ -177,7 +150,7 @@ kind delete cluster --name cluster-hub
 ## Componentes da Stack B(A)C(K)
 
 ### NGINX Gateway Fabric
-- **Versão**: Latest (via OCI registry)
+- **Versão**: 2.4.2
 - **Namespace**: nginx-gateway
 - **Função**: Gateway API implementation para roteamento HTTP/HTTPS
 - **Documentação**: https://docs.nginx.com/nginx-gateway-fabric/
@@ -224,3 +197,20 @@ kind delete cluster --name cluster-hub
 - **DNS não resolve**: Adicione entrada no `/etc/hosts` conforme seção "Configuração de DNS Local"
 - **Bootstrap falha**: Verifique se o token do GitHub está correto e se o repositório é acessível
 - **Addons não sincronizam**: Confirme se o Application `addons` está em estado Healthy no ArgoCD
+
+### Acesso local ao ArgoCD (fallback)
+
+Se o Gateway API não estiver funcionando ou para debug local, use `kubectl port-forward`:
+
+```bash
+kubectl port-forward -n argocd svc/argocd-server 8080:443
+# Acesse https://localhost:8080 (aceite certificado inseguro)
+```
+
+Alternativa via proxy:
+
+```bash
+kubectl proxy --port=8001
+# Acesse:
+# http://localhost:8001/api/v1/namespaces/argocd/services/https:argocd-server:/proxy/
+```
