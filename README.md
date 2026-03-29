@@ -66,14 +66,20 @@ kubectl apply -f kind/default-gateway.yaml
 kubectl create ns argocd
 kubectl label namespace argocd shared-gateway-access="true" --overwrite
 
+# Atualizar repositório Helm (necessário se você já tinha o repo configurado)
+helm repo update
+
 # Instalar ArgoCD com configurações customizadas
 helm install argocd argo/argo-cd --version 9.3.7 -n argocd -f argocd/values.yaml
 ```
 
 **O que faz**:
 - Cria namespace `argocd` com acesso ao gateway compartilhado
+- Atualiza o índice do repositório Helm para garantir acesso às versões mais recentes
 - Instala ArgoCD v9.3.7 com configurações para funcionar atrás de proxy
 - Habilita modo `--insecure` para SSL termination no gateway
+
+> **⚠️ Nota**: Se você receber o erro `chart "argo-cd" matching 9.3.7 not found`, execute `helm repo update` antes da instalação para atualizar o índice do repositório.
 
 ## 6. Configurando Rotas do ArgoCD
 
@@ -87,16 +93,16 @@ kubectl apply -f argocd/argocd-routes.yaml
 
 ## 7. Acessando os Serviços
 
-### ArgoCD
-- **URL**: http://argocd.kleste.lab:8080
-- **Usuário**: admin
-- **Senha**: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
-
 ### Configuração de DNS Local
 Adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` (Windows):
 ```
 127.0.0.1 argocd.kleste.lab
 ```
+
+### ArgoCD
+- **URL**: http://argocd.kleste.lab:8080
+- **Usuário**: admin
+- **Senha**: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
 
 ## 8. Limpeza do Ambiente
 
