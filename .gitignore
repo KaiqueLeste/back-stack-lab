@@ -1,0 +1,18 @@
+# Secrets e credenciais
+argocd/github-secret.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build e artifacts
+*.tar
+*.tar.gz
+*.zip

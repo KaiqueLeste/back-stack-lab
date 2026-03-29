@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crossview
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - name: crossview
+  template:
+    metadata:
+      name: crossview
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: crossview
+        app.kubernetes.io/component: platform
+    spec:
+      project: back-stack
+      source:
+        repoURL: oci://ghcr.io/crossplane-contrib/crossview-chart
+        targetRevision: 3.5.3
+        chart: crossview
+        helm:
+          releaseName: crossview
+          values: |
+            app:
+              replicas: 1
+            database:
+              enabled: true
+            config:
+              server:
+                auth:
+                  mode: session
+            secrets:
+              adminUsername: admin
+              adminPassword: ChangeThisImmediately2026!
+              dbPassword: ""
+              sessionSecret: ""
+              OIDCClientSecret: ""
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: crossview
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

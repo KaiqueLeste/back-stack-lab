@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crossplane
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - name: crossplane
+  template:
+    metadata:
+      name: crossplane
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: crossplane
+        app.kubernetes.io/component: platform
+    spec:
+      project: back-stack
+      source:
+        repoURL: https://charts.crossplane.io/stable
+        targetRevision: 2.2.0
+        chart: crossplane
+        helm:
+          releaseName: crossplane
+          values: |
+            replicas: 1
+            serviceAccount:
+              create: true
+            rbac:
+              create: true
+            deploymentStrategy: RollingUpdate
+            metrics:
+              enabled: true
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: crossplane-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
