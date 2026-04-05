@@ -21,6 +21,13 @@ Este guia demonstra como configurar um cluster Kubernetes local com Kind e ArgoC
 - Repositório Argo Helm adicionado: `helm repo add argo https://argoproj.github.io/argo-helm`
 - Token do GitHub (para autenticação do ArgoCD)
 
+## 0. Pré-configuração de DNS Local
+
+Antes de iniciar, adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` (Windows):
+```
+127.0.0.1 argocd.kleste.lab
+```
+
 ## 1. Criando o Cluster Kind
 
 ```bash
@@ -83,23 +90,7 @@ O Application `back-stack` aplica automaticamente:
 - `back-stack/localstack/localstack-applicationset.yaml`
 - `back-stack/argocd/argocd-routes.yaml`
 
-## 5. Configurando Rotas do ArgoCD (opcional se estiver usando port-forward)
-
-```bash
-kubectl apply -f back-stack/argocd/argocd-routes.yaml
-```
-
-**O que faz**: 
-- Cria HTTPRoute para expor ArgoCD em `argocd.kleste.lab`
-- Roteia tráfego do gateway para o serviço ArgoCD na porta 443
-
-## 6. Acessando os Serviços
-
-### Configuração de DNS Local
-Adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` (Windows):
-```
-127.0.0.1 argocd.kleste.lab
-```
+## 5. Acessando os Serviços
 
 ### ArgoCD
 - **URL**: http://argocd.kleste.lab:8080
@@ -115,7 +106,7 @@ Adicione ao `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` 
 - **Porta**: 4566 (ClusterIP)
 - **Acesso**: Via port-forward: `kubectl port-forward -n localstack svc/localstack 4566:4566`
 
-## 7. Limpeza do Ambiente
+## Limpeza do Ambiente
 
 ```bash
 kind delete cluster --name cluster-hub
