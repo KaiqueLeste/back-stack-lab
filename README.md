@@ -59,14 +59,6 @@ cp argocd/github-secret.yaml.example argocd/github-secret.yaml
 kubectl apply -f argocd/github-secret.yaml
 ```
 
-## 3.1 Configurar Secret do GHCR para Crossview
-
-```bash
-cp argocd/ghcr-secret.yaml.example argocd/ghcr-secret.yaml
-# Edite argocd/ghcr-secret.yaml, colocando seu username e GHCR token
-kubectl apply -f argocd/ghcr-secret.yaml
-```
-
 ## 4. Aplicar Bootstrap para instalar addons
 
 ```bash
@@ -75,25 +67,26 @@ kubectl apply -f argocd/bootstrap.yaml
 
 **O que faz**:
 - Cria AppProject `back-stack`
-- Cria Application `addons` que aplica os ApplicationSets das pastas `addons/*`
+- Cria Application `back-stack` que aplica os manifests da pasta `back-stack/`
 - Instala Crossplane, Crossview, Kyverno, LocalStack e NGINX Gateway Fabric
 
-### 4.1 O que está automatizado pelo bootstrap (addons)
+### 4.1 O que está automatizado pelo bootstrap
 
-O Application `addons` aplica automaticamente:
+O Application `back-stack` aplica automaticamente:
 
-- `addons/nginx-gateway-fabric/gateway-api-crds.yaml`
-- `addons/nginx-gateway-fabric/nginx-gateway-fabric-applicationset.yaml`
-- `addons/nginx-gateway-fabric/shared-gateway.yaml`
-- `addons/crossplane/crossplane-applicationset.yaml`
-- `addons/crossplane/crossview-applicationset.yaml`
-- `addons/kyverno/kyverno-applicationset.yaml`
-- `addons/localstack/localstack-applicationset.yaml`
+- `back-stack/nginx-gateway-fabric/gateway-api-crds.yaml`
+- `back-stack/nginx-gateway-fabric/nginx-gateway-fabric-applicationset.yaml`
+- `back-stack/nginx-gateway-fabric/shared-gateway.yaml`
+- `back-stack/crossplane/crossplane-applicationset.yaml`
+- `back-stack/crossplane/crossview-applicationset.yaml`
+- `back-stack/kyverno/kyverno-applicationset.yaml`
+- `back-stack/localstack/localstack-applicationset.yaml`
+- `back-stack/argocd/argocd-routes.yaml`
 
 ## 5. Configurando Rotas do ArgoCD (opcional se estiver usando port-forward)
 
 ```bash
-kubectl apply -f argocd/argocd-routes.yaml
+kubectl apply -f back-stack/argocd/argocd-routes.yaml
 ```
 
 **O que faz**: 
@@ -132,7 +125,13 @@ kind delete cluster --name cluster-hub
 
 ```
 ├── .gitignore                    # Exclusões do Git (inclui secrets)
-├── addons/                       # ApplicationSets dos addons
+├── argocd/
+│   ├── bootstrap.yaml           # Bootstrap Application + AppProject
+│   ├── github-secret.yaml.example # Template de secret do GitHub
+│   └── values.yaml              # Configurações customizadas do ArgoCD
+├── back-stack/                  # Manifests gerenciados pelo ArgoCD
+│   ├── argocd/
+│   │   └── argocd-routes.yaml   # HTTPRoute para exposição do ArgoCD
 │   ├── crossplane/
 │   │   ├── crossplane-applicationset.yaml
 │   │   └── crossview-applicationset.yaml
@@ -140,18 +139,12 @@ kind delete cluster --name cluster-hub
 │   │   └── kyverno-applicationset.yaml
 │   ├── localstack/
 │   │   └── localstack-applicationset.yaml
-│   └── nginx-gateway-fabric/     # NGINX Gateway Fabric e Gateway API
+│   └── nginx-gateway-fabric/    # NGINX Gateway Fabric e Gateway API
 │       ├── gateway-api-crds.yaml
 │       ├── nginx-gateway-fabric-applicationset.yaml
 │       └── shared-gateway.yaml
-├── argocd/
-│   ├── bootstrap.yaml           # Bootstrap Application + AppProject
-│   ├── github-secret.yaml.example # Template de secret do GitHub
-│   ├── values.yaml              # Configurações customizadas do ArgoCD
-│   └── argocd-routes.yaml       # HTTPRoute para exposição do ArgoCD
 ├── kind/
-│   ├── control-plane.yaml       # Configuração do cluster Kind
-│   └── default-gateway.yaml     # Gateway compartilhado e namespace
+│   └── control-plane.yaml       # Configuração do cluster Kind
 └── README.md                    # Este guia
 ```
 
