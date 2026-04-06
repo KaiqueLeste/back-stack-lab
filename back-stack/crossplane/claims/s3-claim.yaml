@@ -1,0 +1,14 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: S3Bucket
+metadata:
+  name: test-bucket
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  parameters:
+    bucketName: test-bucket-crossplane
+    region: us-east-1
+  compositionRef:
+    name: xs3buckets.platform.kleste.lab
