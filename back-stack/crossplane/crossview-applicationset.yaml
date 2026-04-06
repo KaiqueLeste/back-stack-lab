@@ -29,6 +29,9 @@ spec:
               replicas: 1
             database:
               enabled: true
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
             config:
               server:
                 auth:
@@ -36,7 +39,7 @@ spec:
             secrets:
               adminUsername: admin
               adminPassword: ChangeThisImmediately2026!
-              dbPassword: ""
+              dbPassword: crossview-local
               sessionSecret: ""
               OIDCClientSecret: ""
       destination:
