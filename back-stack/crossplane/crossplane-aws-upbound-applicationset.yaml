@@ -43,6 +43,11 @@ spec:
                           - name: package-runtime
                             args:
                               - --debug
+                            env:
+                              - name: AWS_ENDPOINT_URL
+                                value: http://ministack.ministack.svc.cluster.local:4566
+                              - name: AWS_S3_USE_PATH_STYLE
+                                value: "true"
                         securityContext:
                           fsGroup: 2000
                 serviceAccountTemplate:
