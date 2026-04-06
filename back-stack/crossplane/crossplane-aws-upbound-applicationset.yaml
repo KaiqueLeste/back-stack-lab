@@ -75,6 +75,7 @@ spec:
                   source: Custom
                   services:
                     - s3
+                    - s3control
                   url:
                     type: Static
                     static: http://ministack.ministack.svc.cluster.local:4566
