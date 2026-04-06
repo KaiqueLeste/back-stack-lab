@@ -23,6 +23,11 @@ spec:
               apiVersion: s3.aws.upbound.io/v1beta1
               kind: Bucket
               spec:
+                managementPolicies:
+                  - Observe
+                  - Create
+                  - Delete
+                  - LateInitialize
                 forProvider:
                   region: us-east-1
                 providerConfigRef:
