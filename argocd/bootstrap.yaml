@@ -50,7 +50,6 @@ spec:
     - ghcr.io/crossplane-contrib/crossview-chart
     - ghcr.io/nginx/charts
     - https://kyverno.github.io/kyverno
-    - https://helm.localstack.cloud
   destinations:
     - namespace: '*'
       server: '*'

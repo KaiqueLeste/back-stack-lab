@@ -1,5 +1,6 @@
 # Secrets e credenciais
 argocd/github-secret.yaml
+CLAUDE.md
 
 # IDE
 .vscode/

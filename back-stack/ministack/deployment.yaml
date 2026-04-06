@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ministack
+  namespace: ministack
+  labels:
+    app.kubernetes.io/name: ministack
+    app.kubernetes.io/component: aws-emulation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ministack
+  template:
+    metadata:
+      labels:
+        app: ministack
+        app.kubernetes.io/name: ministack
+    spec:
+      containers:
+        - name: ministack
+          image: nahuelnucera/ministack:latest
+          ports:
+            - containerPort: 4566
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: test
+            - name: AWS_SECRET_ACCESS_KEY
+              value: test
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          livenessProbe:
+            httpGet:
+              path: /_ministack/health
+              port: 4566
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /_ministack/health
+              port: 4566
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
