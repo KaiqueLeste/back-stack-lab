@@ -53,7 +53,7 @@ spec:
               enabled: true
               package:
                 registry: xpkg.upbound.io/upbound
-                version: v2.5.1
+                version: v2.5.0
 
             providerConfig:
               enabled: true
