@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crossplane-aws-upbound
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - name: crossplane-aws-upbound
+  template:
+    metadata:
+      name: crossplane-aws-upbound
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: crossplane-aws-upbound
+        app.kubernetes.io/component: platform
+    spec:
+      project: back-stack
+      source:
+        repoURL: https://github.com/KaiqueLeste/back-stack-lab.git
+        targetRevision: main
+        path: charts/crossplane-aws-upbound
+        helm:
+          releaseName: crossplane-aws-upbound
+          values: |
+            global:
+              enabled_aws_upbound: true
+
+            deploymentRuntimeConfig:
+              enabled: true
+              metadata:
+                name: upbound-aws-runtime-config
+                role_arn: ""
+              spec:
+                deploymentTemplate:
+                  spec:
+                    selector: {}
+                    template:
+                      spec:
+                        containers:
+                          - name: package-runtime
+                            args:
+                              - --debug
+                        securityContext:
+                          fsGroup: 2000
+                serviceAccountTemplate:
+                  metadata:
+                    name: provider-aws
+
+            provider:
+              enabled: true
+              package:
+                registry: xpkg.upbound.io/upbound
+                version: v2.5.1
+
+            providerConfig:
+              enabled: true
+              default: true
+              metadata:
+                name: aws-provider-config
+              spec:
+                credentials:
+                  source: Secret
+                  secretRef:
+                    namespace: crossplane-system
+                    name: aws-ministack-credentials
+                    key: credentials
+                endpoint:
+                  hostnameImmutable: false
+                  url:
+                    type: Static
+                    static: http://ministack.ministack.svc.cluster.local:4566
+
+            providers:
+              - s3
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: crossplane-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
