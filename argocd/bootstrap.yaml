@@ -46,8 +46,7 @@ spec:
   sourceRepos:
     - https://github.com/KaiqueLeste/back-stack-lab.git
     - https://charts.crossplane.io/stable
-    - oci://ghcr.io/crossplane-contrib/crossview-chart
-    - ghcr.io/crossplane-contrib/crossview-chart
+    - https://crossplane-contrib.github.io/crossview
     - ghcr.io/nginx/charts
     - https://kyverno.github.io/kyverno
   destinations:
