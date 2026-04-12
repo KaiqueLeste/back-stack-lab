@@ -20,7 +20,7 @@ spec:
       project: back-stack
       source:
         repoURL: https://github.com/KaiqueLeste/back-stack-lab.git
-        targetRevision: main
+        targetRevision: lab-real
         path: charts/crossplane-aws-upbound
         helm:
           releaseName: crossplane-aws-upbound
@@ -43,9 +43,6 @@ spec:
                           - name: package-runtime
                             args:
                               - --debug
-                            env:
-                              - name: AWS_ENDPOINT_URL
-                                value: http://ministack.ministack.svc.cluster.local:4566
                         securityContext:
                           fsGroup: 2000
                 serviceAccountTemplate:
@@ -68,23 +65,8 @@ spec:
                   source: Secret
                   secretRef:
                     namespace: crossplane-system
-                    name: aws-ministack-credentials
+                    name: aws-credentials
                     key: credentials
-                endpoint:
-                  hostnameImmutable: true
-                  source: Custom
-                  services:
-                    - s3
-                    - s3control
-                    - iam
-                  url:
-                    type: Static
-                    static: http://ministack.ministack.svc.cluster.local:4566
-                s3_use_path_style: true
-                skip_credentials_validation: true
-                skip_metadata_api_check: true
-                skip_region_validation: true
-                skip_requesting_account_id: true
 
             providers:
               - s3

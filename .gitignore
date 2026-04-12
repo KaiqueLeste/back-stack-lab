@@ -1,5 +1,6 @@
 # Secrets e credenciais
 argocd/github-secret.yaml
+crossplane/aws-credentials.yaml
 CLAUDE.md
 
 # Documentação local (não versionada)
