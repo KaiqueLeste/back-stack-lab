@@ -2,6 +2,9 @@
 argocd/github-secret.yaml
 CLAUDE.md
 
+# Documentação local (não versionada)
+docs/
+
 # IDE
 .vscode/
 .idea/

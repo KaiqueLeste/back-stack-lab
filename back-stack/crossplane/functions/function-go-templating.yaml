@@ -1,8 +1,8 @@
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
-  name: function-patch-and-transform
+  name: function-go-templating
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.8.1
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.11.6

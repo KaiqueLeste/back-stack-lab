@@ -1,0 +1,31 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: S3Bucket
+metadata:
+  name: data-lake
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: HML
+spec:
+  compositionRef:
+    name: xs3buckets.platform.kleste.lab
+  parameters:
+    bucketName: data-lake
+    region: us-east-1
+    tags:
+      environment: staging
+      team: data-engineering
+      classification: internal
+    folders:
+      - raw
+      - processed
+      - curated
+    encryption:
+      algorithm: AES256
+    versioning:
+      status: Enabled
+    appAccess:
+      roleName: data-processor
+      permission: readwrite

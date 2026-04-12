@@ -9,33 +9,162 @@ spec:
   compositeTypeRef:
     apiVersion: platform.kleste.lab/v1alpha1
     kind: XS3Bucket
+  environment:
+    environmentConfigs:
+      - type: Selector
+        selector:
+          matchLabels:
+            - key: type
+              type: Value
+              value: aws-account
+            - key: account
+              type: FromCompositeFieldPath
+              valueFromFieldPath: metadata.annotations[platform.kleste.lab/account]
+            - key: environment
+              type: FromCompositeFieldPath
+              valueFromFieldPath: metadata.annotations[platform.kleste.lab/environment]
   mode: Pipeline
   pipeline:
-    - step: patch-and-transform
+    - step: go-templating
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: s3-bucket
-            base:
-              apiVersion: s3.aws.upbound.io/v1beta1
-              kind: Bucket
-              spec:
-                managementPolicies:
-                  - Observe
-                  - Create
-                  - Delete
-                  - LateInitialize
-                forProvider:
-                  region: us-east-1
-                providerConfigRef:
-                  name: default
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.bucketName
-                toFieldPath: metadata.annotations[crossplane.io/external-name]
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.region
-                toFieldPath: spec.forProvider.region
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $p := $xr.spec.parameters }}
+            {{- $bucket := $p.bucketName }}
+            {{- $region := $p.region | default "us-east-1" }}
+            {{- $env := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $allTags := merge ($p.tags | default dict) ($env.accountTags | default dict) }}
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: Bucket
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: s3-bucket
+                crossplane.io/external-name: {{ $bucket }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                region: {{ $region }}
+                {{- if $allTags }}
+                tags:
+                  {{- range $k, $v := $allTags }}
+                  {{ $k }}: {{ $v | quote }}
+                  {{- end }}
+                {{- end }}
+              providerConfigRef:
+                name: default
+            {{- if $p.encryption }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketServerSideEncryptionConfiguration
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-encryption
+                crossplane.io/external-name: {{ $bucket }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                bucket: {{ $bucket }}
+                region: {{ $region }}
+                rule:
+                  - applyServerSideEncryptionByDefault:
+                      - sseAlgorithm: {{ $p.encryption.algorithm | default "AES256" }}
+                        {{- if $p.encryption.kmsKeyId }}
+                        kmsMasterKeyId: {{ $p.encryption.kmsKeyId }}
+                        {{- end }}
+              providerConfigRef:
+                name: default
+            {{- end }}
+            {{- if $p.versioning }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketVersioning
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-versioning
+                crossplane.io/external-name: {{ $bucket }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                bucket: {{ $bucket }}
+                region: {{ $region }}
+                versioningConfiguration:
+                  - status: {{ $p.versioning.status | default "Enabled" }}
+              providerConfigRef:
+                name: default
+            {{- end }}
+            {{- range $i, $folder := $p.folders }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: Object
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: folder-{{ $i }}
+                crossplane.io/external-name: {{ $folder }}/
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                bucket: {{ $bucket }}
+                region: {{ $region }}
+                key: {{ $folder }}/
+                content: ""
+                contentType: application/x-directory
+              providerConfigRef:
+                name: default
+            {{- end }}
+            {{- if $p.appAccess }}
+            {{- $appName := $p.appAccess.roleName }}
+            {{- $permission := $p.appAccess.permission }}
+            {{- $actionsList := list }}
+            {{- if eq $permission "read" }}
+              {{- $actionsList = list "s3:GetObject" "s3:ListBucket" "s3:GetBucketLocation" }}
+            {{- else if eq $permission "write" }}
+              {{- $actionsList = list "s3:PutObject" "s3:DeleteObject" }}
+            {{- else }}
+              {{- $actionsList = list "s3:GetObject" "s3:ListBucket" "s3:GetBucketLocation" "s3:PutObject" "s3:DeleteObject" }}
+            {{- end }}
+            {{- $resources := list (printf "arn:aws:s3:::%s" $bucket) (printf "arn:aws:s3:::%s/*" $bucket) }}
+            {{- $statement := dict "Effect" "Allow" "Action" $actionsList "Resource" $resources }}
+            {{- $policyDoc := dict "Version" "2012-10-17" "Statement" (list $statement) }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Policy
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: iam-policy
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                name: {{ $appName }}-s3-{{ $bucket }}-policy
+                policy: {{ $policyDoc | toJson | quote }}
+              providerConfigRef:
+                name: default
+            {{- $policyArn := "" }}
+            {{- if and .observed.resources (index .observed.resources "iam-policy") }}
+              {{- $pol := index .observed.resources "iam-policy" }}
+              {{- if and $pol.resource.status $pol.resource.status.atProvider $pol.resource.status.atProvider.arn }}
+                {{- $policyArn = $pol.resource.status.atProvider.arn }}
+              {{- end }}
+            {{- end }}
+            {{- if $policyArn }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: iam-role-policy-attachment
+                crossplane.io/external-name: {{ $appName }}/{{ $policyArn }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                policyArn: {{ $policyArn }}
+                role: {{ $appName }}
+              providerConfigRef:
+                name: default
+            {{- end }}
+            {{- end }}

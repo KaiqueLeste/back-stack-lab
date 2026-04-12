@@ -37,3 +37,48 @@ spec:
                       type: string
                       description: Região AWS
                       default: us-east-1
+                    tags:
+                      type: object
+                      description: Tags aplicadas ao bucket
+                      additionalProperties:
+                        type: string
+                    folders:
+                      type: array
+                      description: Prefixos (pastas) a serem criados no bucket
+                      items:
+                        type: string
+                    encryption:
+                      type: object
+                      description: Configuração de criptografia SSE do bucket
+                      properties:
+                        algorithm:
+                          type: string
+                          description: Algoritmo de criptografia
+                          default: AES256
+                          enum: [AES256, "aws:kms"]
+                        kmsKeyId:
+                          type: string
+                          description: ARN da chave KMS (somente para aws:kms)
+                    versioning:
+                      type: object
+                      description: Configuração de versionamento do bucket
+                      properties:
+                        status:
+                          type: string
+                          description: Status do versionamento
+                          default: Enabled
+                          enum: [Enabled, Suspended]
+                    appAccess:
+                      type: object
+                      description: Permissão de acesso de uma aplicação/role ao bucket via IAM
+                      required:
+                        - roleName
+                        - permission
+                      properties:
+                        roleName:
+                          type: string
+                          description: Nome da role IAM que terá acesso ao bucket
+                        permission:
+                          type: string
+                          description: "Nível de permissão: read, write ou readwrite"
+                          enum: [read, write, readwrite]

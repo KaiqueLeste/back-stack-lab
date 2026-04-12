@@ -1,0 +1,33 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: log-shipper
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: PRD
+spec:
+  compositionRef:
+    name: xlambdafunctions.platform.kleste.lab
+  parameters:
+    functionName: log-shipper
+    runtime: python3.12
+    handler: shipper.handler
+    memorySize: 512
+    timeout: 60
+    description: Coleta e envia logs de auditoria para o bucket de armazenamento
+    codeSource:
+      s3Bucket: platform-artifacts
+      s3Key: functions/log-shipper/latest.zip
+    environment:
+      ENV: production
+      AUDIT_BUCKET: audit-logs
+      BATCH_SIZE: "100"
+    tags:
+      app: log-shipper
+      team: security
+      pattern: scheduled-job
+# Role IAM criada: log-shipper
+# Linked ao S3: ver claims/s3-audit-logs.yaml (appAccess.roleName: log-shipper, permission: write)

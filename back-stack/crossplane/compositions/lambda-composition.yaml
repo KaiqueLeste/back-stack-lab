@@ -1,0 +1,134 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xlambdafunctions.platform.kleste.lab
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  compositeTypeRef:
+    apiVersion: platform.kleste.lab/v1alpha1
+    kind: XLambdaFunction
+  environment:
+    environmentConfigs:
+      - type: Selector
+        selector:
+          matchLabels:
+            - key: type
+              type: Value
+              value: aws-account
+            - key: account
+              type: FromCompositeFieldPath
+              valueFromFieldPath: metadata.annotations[platform.kleste.lab/account]
+            - key: environment
+              type: FromCompositeFieldPath
+              valueFromFieldPath: metadata.annotations[platform.kleste.lab/environment]
+  mode: Pipeline
+  pipeline:
+    - step: go-templating
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $p := $xr.spec.parameters }}
+            {{- $fnName := $p.functionName }}
+            {{- $env := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $allTags := merge ($p.tags | default dict) ($env.accountTags | default dict) }}
+            {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "lambda.amazonaws.com") "Action" "sts:AssumeRole")) }}
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: lambda-role
+                crossplane.io/external-name: {{ $fnName }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                name: {{ $fnName }}
+                assumeRolePolicy: {{ $trustPolicy | toJson | quote }}
+                {{- if $allTags }}
+                tags:
+                  {{- range $k, $v := $allTags }}
+                  {{ $k }}: {{ $v | quote }}
+                  {{- end }}
+                {{- end }}
+              providerConfigRef:
+                name: default
+            {{- $roleArn := "" }}
+            {{- if and .observed.resources (index .observed.resources "lambda-role") }}
+              {{- $role := index .observed.resources "lambda-role" }}
+              {{- if and $role.resource.status $role.resource.status.atProvider $role.resource.status.atProvider.arn }}
+                {{- $roleArn = $role.resource.status.atProvider.arn }}
+              {{- end }}
+            {{- end }}
+            {{- if $roleArn }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: lambda-basic-execution
+                crossplane.io/external-name: {{ $fnName }}/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+                role: {{ $fnName }}
+              providerConfigRef:
+                name: default
+            ---
+            apiVersion: lambda.aws.upbound.io/v1beta1
+            kind: Function
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: lambda-function
+                crossplane.io/external-name: {{ $fnName }}
+            spec:
+              managementPolicies: [Observe, Create, Delete, LateInitialize]
+              forProvider:
+                functionName: {{ $fnName }}
+                role: {{ $roleArn }}
+                runtime: {{ $p.runtime }}
+                handler: {{ $p.handler }}
+                memorySize: {{ $p.memorySize | default 128 }}
+                timeout: {{ $p.timeout | default 30 }}
+                {{- if $p.description }}
+                description: {{ $p.description | quote }}
+                {{- end }}
+                s3Bucket: {{ $p.codeSource.s3Bucket }}
+                s3Key: {{ $p.codeSource.s3Key }}
+                {{- if $p.environment }}
+                environment:
+                  - variables:
+                      {{- range $k, $v := $p.environment }}
+                      {{ $k }}: {{ $v | quote }}
+                      {{- end }}
+                {{- end }}
+                {{- if and $p.vpcConfig $env $env.networking }}
+                {{- $subnetType := $p.vpcConfig.subnetType | default "private" }}
+                {{- $subnets := list }}
+                {{- if eq $subnetType "private" }}
+                  {{- $subnets = $env.networking.privateSubnets }}
+                {{- else if eq $subnetType "public" }}
+                  {{- $subnets = $env.networking.publicSubnets }}
+                {{- else }}
+                  {{- $subnets = $env.networking.databaseSubnets }}
+                {{- end }}
+                vpcConfig:
+                  - subnetIds: {{ $subnets | toJson }}
+                    securityGroupIds: []
+                {{- end }}
+                {{- if $allTags }}
+                tags:
+                  {{- range $k, $v := $allTags }}
+                  {{ $k }}: {{ $v | quote }}
+                  {{- end }}
+                {{- end }}
+              providerConfigRef:
+                name: default
+            {{- end }}

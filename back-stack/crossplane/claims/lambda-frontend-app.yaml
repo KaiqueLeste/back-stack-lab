@@ -1,0 +1,32 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: frontend-app
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: PRD
+spec:
+  compositionRef:
+    name: xlambdafunctions.platform.kleste.lab
+  parameters:
+    functionName: frontend-app
+    runtime: nodejs20.x
+    handler: index.handler
+    memorySize: 256
+    timeout: 30
+    description: Processa e serve assets do frontend
+    codeSource:
+      s3Bucket: platform-artifacts
+      s3Key: functions/frontend-app/latest.zip
+    environment:
+      NODE_ENV: production
+      ASSETS_BUCKET: frontend-assets
+    tags:
+      app: frontend-app
+      team: frontend
+      pattern: file-processor
+# Role IAM criada: frontend-app
+# Linked ao S3: ver claims/s3-frontend-assets.yaml (appAccess.roleName: frontend-app)

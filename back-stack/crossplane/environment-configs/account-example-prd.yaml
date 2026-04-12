@@ -1,0 +1,31 @@
+# Exemplo de EnvironmentConfig gerado pelo Account Factory for Terraform (AFT)
+# Um arquivo como este é criado automaticamente para cada conta + ambiente provisionado
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: exemplo-prd
+  labels:
+    type: aws-account
+    account: exemplo
+    environment: PRD
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+data:
+  accountId: "123456789012"
+  region: us-east-1
+  accountTags:
+    environment: production
+    account: exemplo
+    cost-center: engenharia
+  networking:
+    vpcId: vpc-0abc123def456
+    publicSubnets:
+      - subnet-0pub1aaaa
+      - subnet-0pub2bbbb
+    privateSubnets:
+      - subnet-0priv1cccc
+      - subnet-0priv2dddd
+    databaseSubnets:
+      - subnet-0db1eeee
+      - subnet-0db2ffff

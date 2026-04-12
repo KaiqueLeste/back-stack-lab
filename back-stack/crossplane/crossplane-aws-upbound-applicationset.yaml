@@ -76,6 +76,7 @@ spec:
                   services:
                     - s3
                     - s3control
+                    - iam
                   url:
                     type: Static
                     static: http://ministack.ministack.svc.cluster.local:4566
@@ -87,6 +88,8 @@ spec:
 
             providers:
               - s3
+              - iam
+              - lambda
       destination:
         server: https://kubernetes.default.svc
         namespace: crossplane-system

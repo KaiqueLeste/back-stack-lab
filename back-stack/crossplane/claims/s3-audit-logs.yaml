@@ -1,0 +1,27 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: S3Bucket
+metadata:
+  name: audit-logs
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: PRD
+spec:
+  compositionRef:
+    name: xs3buckets.platform.kleste.lab
+  parameters:
+    bucketName: audit-logs
+    region: us-east-1
+    tags:
+      environment: production
+      team: security
+      classification: sensitive
+    encryption:
+      algorithm: AES256
+    versioning:
+      status: Enabled
+    appAccess:
+      roleName: log-shipper
+      permission: write

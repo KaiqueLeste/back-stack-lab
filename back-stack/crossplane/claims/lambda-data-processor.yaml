@@ -1,0 +1,33 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: LambdaFunction
+metadata:
+  name: data-processor
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: HML
+spec:
+  compositionRef:
+    name: xlambdafunctions.platform.kleste.lab
+  parameters:
+    functionName: data-processor
+    runtime: python3.12
+    handler: main.handler
+    memorySize: 1024
+    timeout: 300
+    description: Transforma dados entre as camadas raw, processed e curated do data lake
+    codeSource:
+      s3Bucket: platform-artifacts
+      s3Key: functions/data-processor/latest.zip
+    environment:
+      ENV: staging
+      DATA_LAKE_BUCKET: data-lake
+      LOG_LEVEL: INFO
+    tags:
+      app: data-processor
+      team: data-engineering
+      pattern: file-processor
+# Role IAM criada: data-processor
+# Linked ao S3: ver claims/s3-data-lake.yaml (appAccess.roleName: data-processor)

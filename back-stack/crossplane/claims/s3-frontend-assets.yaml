@@ -1,0 +1,32 @@
+apiVersion: platform.kleste.lab/v1alpha1
+kind: S3Bucket
+metadata:
+  name: frontend-assets
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    platform.kleste.lab/account: exemplo
+    platform.kleste.lab/environment: PRD
+spec:
+  compositionRef:
+    name: xs3buckets.platform.kleste.lab
+  parameters:
+    bucketName: frontend-assets
+    region: us-east-1
+    tags:
+      environment: production
+      team: frontend
+      cost-center: web
+    folders:
+      - images
+      - images/thumbnails
+      - images/banners
+      - css
+      - js
+      - fonts
+    encryption:
+      algorithm: AES256
+    appAccess:
+      roleName: frontend-app
+      permission: readwrite

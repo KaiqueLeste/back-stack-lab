@@ -1,0 +1,99 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xlambdafunctions.platform.kleste.lab
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  group: platform.kleste.lab
+  names:
+    kind: XLambdaFunction
+    plural: xlambdafunctions
+  claimNames:
+    kind: LambdaFunction
+    plural: lambdafunctions
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  required:
+                    - functionName
+                    - runtime
+                    - handler
+                    - codeSource
+                  properties:
+                    functionName:
+                      type: string
+                      description: Nome da função Lambda e da role IAM associada
+                    runtime:
+                      type: string
+                      description: Runtime da função
+                      enum:
+                        - python3.12
+                        - python3.11
+                        - nodejs20.x
+                        - nodejs18.x
+                        - java21
+                        - java17
+                        - go1.x
+                        - dotnet8
+                    handler:
+                      type: string
+                      description: "Entry point da função (ex: index.handler)"
+                    memorySize:
+                      type: integer
+                      description: Memória alocada em MB
+                      default: 128
+                      minimum: 128
+                      maximum: 10240
+                    timeout:
+                      type: integer
+                      description: Timeout em segundos
+                      default: 30
+                      minimum: 1
+                      maximum: 900
+                    description:
+                      type: string
+                      description: Descrição da função
+                    codeSource:
+                      type: object
+                      description: Localização do pacote de código no S3
+                      required:
+                        - s3Bucket
+                        - s3Key
+                      properties:
+                        s3Bucket:
+                          type: string
+                          description: Bucket S3 onde o pacote de código está armazenado
+                        s3Key:
+                          type: string
+                          description: Caminho do pacote ZIP no bucket
+                    environment:
+                      type: object
+                      description: Variáveis de ambiente da função
+                      additionalProperties:
+                        type: string
+                    vpcConfig:
+                      type: object
+                      description: Configuração de VPC (requer EnvironmentConfig com dados de networking)
+                      properties:
+                        subnetType:
+                          type: string
+                          description: Tipo de subnet a usar (lido do EnvironmentConfig da conta)
+                          default: private
+                          enum: [private, public, database]
+                    tags:
+                      type: object
+                      description: Tags adicionais aplicadas à função e à role
+                      additionalProperties:
+                        type: string
