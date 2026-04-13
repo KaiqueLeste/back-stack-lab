@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-gitops
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - name: platform-argocd
+            path: argocd
+            namespace: argocd
+          - name: platform-crossplane
+            path: crossplane
+            namespace: crossplane-system
+  template:
+    metadata:
+      name: "{{ .name }}"
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: "{{ .name }}"
+        app.kubernetes.io/component: platform
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: back-stack
+      source:
+        repoURL: https://dev.azure.com/kaiqueleste01/Plataforma/_git/platform-gitops
+        targetRevision: main
+        path: "{{ .path }}"
+        directory:
+          recurse: true
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .namespace }}"
+      syncPolicy:
+        automated:
+          prune: false
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=false
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
