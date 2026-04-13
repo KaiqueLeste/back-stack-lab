@@ -72,6 +72,7 @@ spec:
               - s3
               - iam
               - lambda
+              - ecr
       destination:
         server: https://kubernetes.default.svc
         namespace: crossplane-system
